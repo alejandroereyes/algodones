@@ -5,42 +5,25 @@ defmodule Elixirs.MiniStringInterpreter do
   @moduledoc false
 
   def execute(command) do
-    strings = command |> to_str_arr(~r{\.})
-
-    reduce_commands(strings, 0, [])
+    command
+      |> String.replace(~r{[^\+\.]}, "")
+      |> String.split(~r{.}, include_captures: true, trim: true)
+      |> reduce_commands(0, [])
   end
 
-  def reduce_commands([_ | tail], codepoint, output) when tail == [] do
-    "#{[codepoint | output] |> Enum.reverse}"
+  def reduce_commands([], _codepoint, output) do
+    "#{output |> Enum.reverse}"
   end
 
-  def reduce_commands([head | tail], codepoint, output) do
-    if head == "." do
-      reduce_commands(tail, codepoint, [codepoint | output])
+  def reduce_commands(["." | tail], codepoint, output) do
+    reduce_commands(tail, codepoint, [codepoint | output])
+  end
+
+  def reduce_commands(["+" | tail], codepoint, output) do
+    if codepoint >= 255 do
+      reduce_commands(tail, 0, output)
     else
-      reduce_commands(tail, to_codepoint(head, codepoint), output)
+      reduce_commands(tail, codepoint + 1, output)
     end
-  end
-
-  def to_codepoint(str, codepoint) do
-    strings = to_str_arr(str, ~r{\+})
-
-    reduce_codepoint(strings, codepoint)
-  end
-
-  def reduce_codepoint([_ | tail], codepoint) when tail == [] do
-    codepoint + 1
-  end
-
-  def reduce_codepoint([_ | tail], codepoint) do
-    if codepoint + 1 >= 256 do
-      reduce_codepoint(tail, 0)
-    else
-      reduce_codepoint(tail, codepoint + 1)
-    end
-  end
-
-  def to_str_arr(str, delimiter) do
-    String.split(str, delimiter, include_captures: true, trim: true)
   end
 end
